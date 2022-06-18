@@ -5,8 +5,88 @@ output:
     keep_md: yes
 ---
 
-# This is  test
+# This is a test
 
-A Test
+A Test. A real test.
+
+```{r echo=F, message=F, warning=F, cache=T}
+library(mosaic) 
+#library(udunits2) #vor eurostat laden, um Probleme zu vermeiden. 
+#Prüfen: Redundant mit mosaic?
+library(eurostat)
+mydata <- get_eurostat("nama_10_gdp",
+                       type = "label",
+                       time_format = "num",
+                       select_time="Y",
+                       cache = T
+) %>%
+  filter(na_item =="Gross domestic product at market prices",
+         unit =="Chain linked volumes (2015), million euro",
+         geo==c("Germany (until 1990 former territory of the FRG)")
+         )
+# Name für Germany kürzen
+mydata$geo[mydata$geo=="Germany (until 1990 former territory of the FRG)"] <- "Germany"
+
+
+
+
+model1 <- lm(values ~ time+ I(time^2), data=mydata)
+
+options(scipen=999)
+#summary(model1)
+
+temp_var <- predict(model1, interval="prediction")
+
+mydata <- cbind(mydata, temp_var)
+```
+
+
+```{r echo=F, warning=F, message=F, cache=T}
+
+mydata_short <- mydata %>% select(time, values, fit, lwr, upr)
+
+df <- data.frame(seq(2022, 2060, 1), NA, NA, NA, NA)
+names(df) <- c("time", "values", "fit", "lwr", "upr" )
+
+mydata_extended <- rbind(mydata_short, df)
+
+options(scipen = 999)
+
+mydata_extended %>%
+    ggplot(aes(time, values))+
+   # xlim(1990, 2021)+
+    geom_point()+
+   # geom_line() +
+    geom_smooth(method = 'lm', 
+                formula = y ~ x+ I(x^2),
+                fullrange=T,
+    #            color="red"
+                )+
+   # geom_smooth(method = 'lm',
+   #             fullrange=T
+  #  )+
+  geom_vline(xintercept=2022,linetype = "dashed" )+
+geom_line(aes(y=lwr), color = "red", linetype = "dashed")+
+geom_line(aes(y=upr), color = "red", linetype = "dashed")+
+    annotate("text", x=2000, y=4500000, label="Vergangenheit", color="grey30")+
+  annotate("text", x=2035, y=4500000, label="Zukunft", color="grey30")+
+  theme_classic() +
+    scale_x_continuous(breaks = 2022,
+                     labels = "Gegenwart") +
+      scale_y_continuous(#expand = c(0, 0), 
+                     breaks = NULL) +
+  theme(axis.line = element_line(arrow = arrow(type='closed', length = unit(5,'pt'))))+
+  labs(#fill="Index",
+       title="Prognoseunsicherheit",
+       #subtitle= "Anteil am BIP, 2020",
+       x="Zeit", y='Werte',
+       caption = paste('Illustration: Jan S. Voßwinkel, 2022'))
+
+
+
+```
+
+
+
 
 
